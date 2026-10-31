@@ -74,7 +74,11 @@ class Society():
         '''
         is the data out version
         '''
-        return [self.name, self.membership, self.requested_hours, self.remainder, self.allocated_hours]
+        return {
+            'm' : self.membership,
+            'd' : self.requested_hours,
+            'x' : self.allocated_hours
+            }
 
     def update_membership(self, new_membership):
         '''
@@ -214,8 +218,10 @@ class SocietyList():
 
         self.reset_allocated_times()
 
-    def output_format(self, algoname):
-        res = [algoname]
+    def output_format(self, algoname = ''):
+        res = []
+        if algoname != '':
+            res = [algoname]
         res.extend([soc.data_output_format for soc in self.societies])
         return res
 
@@ -400,26 +406,47 @@ def run_algorithms(list_of_societies):
 
 
 def run_sim(iters):
-    res = []
+    res = {
+        'society' : [],
+        'membership' : [],
+        'requests' : [],
+        }
     allocator = AllocateHours(list_of_societies)
     for _ in range(iters):
-        allocator.generate_random_data()
+        allocator.generate_random_data()                            # generate random data for trial
 
-        allocator.output_format(algoname='None')
+        allocator.allocate_by_society()                             # apply allocation algorithm
+        allocator.get_remainders()                                  # allocate remainders
 
-        allocator.allocate_by_society()
-        # x.extend(allocator.output_format('society1'))
-        allocator.get_remainders()
-        res.extend(allocator.output_format('society'))
+        res['society'].append(allocator.output_format())            # store output data
+
+        allocator.reset_allocated_times()                           # reset allocated times
+
+        allocator.allocate_by_membership()                          # apply allocation algorithm
+        allocator.get_remainders()                                  # allocate remainders
+
+        res['membership'].append(allocator.output_format())         # store output data
+
+        allocator.reset_allocated_times()                           # reset allocated times
+
+        allocator.allocate_by_requests()                            # apply allocation algorithm
+        allocator.get_remainders()                                  # allocate remainders
+
+        res['requests'].append(allocator.output_format())           # store output data
+
+        allocator.reset_allocated_times()                           # reset allocated times
     return res
 
-res = run_sim(2)
+res = run_sim(50)
 
-for i in res:
-    if type(i) == str:
-        counter = 0
-    else:
-        counter += 1
-    print(counter,i)
 
-print()
+
+for algo_name,algo_results in res.items():
+    print(f'\t=-=-=-=-= Algo Applied = {algo_name} =-=-=-=-=\n')
+    for i,trial_results_for_algo in enumerate(algo_results):
+        print(f' Trial {i+1} :')
+        for soc_results in trial_results_for_algo:
+            print(f'\t{soc_results}')
+        print()
+
+    print()
