@@ -1,5 +1,11 @@
 import random as r
 from math import floor
+import matplotlib.pyplot as plt
+
+MEMBERSHIP_MIN = 50
+MEMBERSHIP_MAX = 200
+REQUESTS_MIN = 7
+REQUESTS_MAX = 20
 
 SOCIETIES = [
     'Aerobics',
@@ -13,34 +19,14 @@ SOCIETIES = [
     'Indoor Hockey',
     'Judo'
 ]
-PREFERRED_PRACTICE_TIME = [
-    16,
-    14,
-    15,
-    7,
-    19,
-    15,
-    17,
-    11,
-    9,
-    7
-]
-MEMBERSHIP = [
-    152,
-    87,
-    193,
-    64,
-    178,
-    134,
-    199,
-    73,
-    158,
-    121
-]
+MEMBERSHIPS = [67, 51, 69, 58, 82, 155, 141, 110, 196, 53]
+REQUESTS = [15, 8, 8, 10, 8, 18, 20, 8, 13, 16]
 ALLOCATABLE_HOURS = 70
 
-# ==================
+r.seed(2003)
 
+# ==================
+# Society data
 # ==================
 
 class Society():
@@ -51,15 +37,25 @@ class Society():
             self,
             name,
             membership,
-            preferred_practice_time
+            requested_hours
         ):
         self.name = name
         self.membership = membership
-        self.requested_hours = preferred_practice_time
+        self.requested_hours = requested_hours
 
-        self.allocated_hours = None
+        self.allocated_hours = 0
         self.remainder = None
-   
+
+    @property
+    def satisfaction(self):
+        '''
+        satisfaction of a society is the proportion of its allocated hours to its requested hours
+        '''
+        if self.allocated_hours is None:
+            print('ERROR: No hours allocated for satifaction')
+            return 0
+        return self.allocated_hours / self.requested_hours
+
     @property
     def requested_hours_unallocated(self):
         '''
@@ -79,6 +75,10 @@ class Society():
             'd' : self.requested_hours,
             'x' : self.allocated_hours
             }
+
+    @property
+    def requests_per_member(self):
+        return self.membership / self.requested_hours
 
     def update_membership(self, new_membership):
         '''
@@ -105,12 +105,12 @@ class Society():
         self.remainder = remainder
 
     def __str__(self):
-        res = f'{self.name}\n\tMembership : {self.membership}\n\tRequested : {self.requested_hours} | Allocated : {self.allocated_hours} | Unallocated : {self.requested_hours_unallocated}'
+        res = f'{self.name}\n\tMembership : {self.membership}\n\tRequested : {self.requested_hours} | Allocated : {self.allocated_hours} | Unallocated : {self.requested_hours_unallocated}\n\tSatisfaction : {self.satisfaction}'
         return res
 
 
 # ==================
-
+# Society list
 # ==================
 
 class SocietyList():
@@ -119,6 +119,17 @@ class SocietyList():
     '''
     def __init__(self, societies : list[Society]):
         self.societies = societies
+
+    def __str__(self):
+        '''
+        prints list of society data
+        '''
+        res = '===============================================================================\n'
+        for soc in self.societies:
+            res += str(soc)
+            res += '\n'
+        res += '===============================================================================\n'
+        return res
 
     @property
     def total_membership(self):
@@ -140,10 +151,28 @@ class SocietyList():
         gets the total requests made by all socs
         '''
         return sum(soc.requested_hours for soc in self.societies)
+
+    @property
+    def lowest_satisfaction_soc(self):
+        '''
+        returns society object with lowest satisfaction score
+        '''
+        lowest = self.get_lowest_satisfaction()
+        if lowest.satisfaction == 0:
+            print('Lowest satisfaction is 0')
+            print(f'{lowest.name}\n\tRequests : {lowest.requested_hours} | Allocated : {lowest.allocated_hours}')
+        return lowest
+
+    @property
+    def lowest_satisfaction_score(self):
+        '''
+        returns the lowest satisfaction score
+        '''
+        return self.lowest_satisfaction_soc.satisfaction
         
     def order_by_membership(self):
         '''
-        orders by membership
+        returns a dict of socs ordered by membership - does not mutate
         '''
         return sorted(
             self.societies,
@@ -153,7 +182,7 @@ class SocietyList():
 
     def order_by_requests(self):
         '''
-        orders by number of requests
+        returns a dict of socs ordered by requests - does not mutate
         '''
         return sorted(
             self.societies,
@@ -163,7 +192,7 @@ class SocietyList():
 
     def order_by_remainder(self):
         '''
-        orders socs in their remainder values [0,1]
+        returns a dict of socs ordered by remainder values [0,1] - does not mutate
         '''
         return sorted(
             self.societies,
@@ -171,12 +200,38 @@ class SocietyList():
             reverse= True
         )
 
+    def order_by_membership_weighted_utility(self):
+        '''
+        returns a dict of socs ordered by membership weighted utility (high -> low) - does not mutate
+        '''
+        return sorted(
+            self.societies,
+            key = lambda soc : soc.requests_per_member,
+            reverse = True
+        )
+
+    def order_by_satisfaction(self):
+        '''
+        returns a dict of socs ordered by satisfaction (low to high) - does not mutate
+        '''
+        return sorted(
+            self.societies,
+            key = lambda soc : soc.satisfaction,
+            reverse = False
+        )
+
+    def get_lowest_satisfaction(self):
+        '''
+        returns the soc with the lowest satisfaction
+        '''
+        return self.order_by_satisfaction()[0]
+
     def reset_allocated_times(self):
         '''
         resets allocated times for all societies
         '''
         for soc in self.societies:
-            soc.update_allocated_hours(None)
+            soc.update_allocated_hours(0)
 
     def update_allocated_times(self, allocated_times : list[int]):
         '''
@@ -185,20 +240,9 @@ class SocietyList():
         if len(allocated_times) != len(self.societies):
             print('ERROR: List sizes do not match')
             return
-        
+
         for soc, hours in zip(self.societies, allocated_times):
             soc.update_allocated_hours(hours)
-
-    def __str__(self):
-        '''
-        prints list of society data
-        '''
-        res = '===============================================================================\n'
-        for soc in self.societies:
-            res += str(soc)
-            res += '\n'
-        res += '===============================================================================\n'
-        return res
 
     def generate_random_data(self):
         '''
@@ -209,8 +253,8 @@ class SocietyList():
 
         for soc in self.societies:
             # generate random values
-            rand_membership = r.randint(50,200)    # 50 <= membership <= 200
-            rand_requested_hours = r.randint(7,20) # 7 <= preferred_practice_time <= 20
+            rand_membership = r.randint(MEMBERSHIP_MIN,MEMBERSHIP_MAX)    # 50 <= membership <= 200
+            rand_requested_hours = r.randint(REQUESTS_MIN,REQUESTS_MAX)   # 7 <= preferred_practice_time <= 20
 
             # update soc with new values
             soc.update_membership(rand_membership)
@@ -219,6 +263,9 @@ class SocietyList():
         self.reset_allocated_times()
 
     def output_format(self, algoname = ''):
+        '''
+        output format of societies data
+        '''
         res = []
         if algoname != '':
             res = [algoname]
@@ -226,7 +273,7 @@ class SocietyList():
         return res
 
 # ==================
-
+# Allocation algorithms
 # ==================
 
 class AllocateHours(SocietyList):
@@ -251,6 +298,72 @@ class AllocateHours(SocietyList):
             for soc in self.societies
         )
         return self.allocatable_hours - allocated
+
+    def allocate_by_satisfaction(self):
+        '''
+        allocated hours to lowest satisfaction until all hours have been used\n
+        returns the minimum satisfaction
+        '''
+        self.reset_allocated_times()
+
+        while self.unallocated_hours > 0:
+
+            # find eligible socs that require hours
+            eligible = [
+                soc for soc in self.societies
+                if soc.allocated_hours < soc.requested_hours
+            ]
+            # if all societies have their allocated hours, break
+            if not eligible:
+                break
+            
+            # find soc with lowest satisfaction
+            lowest = min(eligible, key=lambda soc: soc.satisfaction)
+
+            # give it an hour
+            lowest.update_allocated_hours(lowest.allocated_hours + 1)
+
+        # return the min satisfaction guaranteed to all socs
+        return min(soc.satisfaction for soc in self.societies)
+
+    def allocate_all_societies_to_minimum_satisfaction(self):
+        '''
+        finds t* - the minimum satisfaction guaranteed to each society\n
+        clears all allocations\n
+        reallocates hours to each society until s_i >= t*\n
+        distributes remaining hours to societies using membership utility
+        '''
+        # gets guaranteed satisfaction
+        guaranteed_satisfaction = self.allocate_by_satisfaction()
+
+        # resets allocations
+        self.reset_allocated_times()
+
+        # give each soc enough hours to reach minimum satisfaction
+        for soc in self.societies:
+            while soc.satisfaction < guaranteed_satisfaction:
+                soc.update_allocated_hours(soc.allocated_hours + 1)
+
+        return self.unallocated_hours
+
+    def allocate_remaining_hours(self):
+        '''
+        allocates remaining hours from guaranteed minimum\n
+        gets societies with lowest satisfaction\n
+        gives an hour to the society with the highest membership\n
+        repeats until all hours given out
+        '''
+        while self.unallocated_hours > 0:
+            min_satisfaction = self.lowest_satisfaction_score
+            socs_with_min_satisfaction = [
+                soc for soc in self.societies
+                if soc.satisfaction == min_satisfaction
+                ]
+            highest_membership = max(
+                socs_with_min_satisfaction,
+                key = lambda soc : soc.membership
+                )
+            highest_membership.update_allocated_hours(highest_membership.allocated_hours + 1)
 
     def allocate_by_society(self):
         '''
@@ -286,14 +399,19 @@ class AllocateHours(SocietyList):
                 )
             )
 
-    def allocate_by_requests(self):
+    def allocate_by_requests(self, integer = True):
         '''
         allocates by requests
         '''
 
         for soc in self.societies:
             proportion_of_total_requests = soc.requested_hours / self.total_requests
-            allocated = floor(proportion_of_total_requests * self.allocatable_hours)
+            
+            if integer:
+                allocated = floor(proportion_of_total_requests * self.allocatable_hours)
+            else:
+                allocated = proportion_of_total_requests * self.allocatable_hours
+            
             soc.update_allocated_hours(
                 min(
                     allocated,
@@ -328,125 +446,36 @@ class AllocateHours(SocietyList):
         return self.order_by_remainder()
 
 
-class ResultsStorage:
-    '''
-
-    '''
-    def __init__(
-            self,
-            start_dist,
-
-        ):
-        self.start_dist = None
-
-
-
-    
-
 # ==================
-
+# Create societies objects
 # ==================
 
 list_of_societies = [
-    Society(name, membership, requested)
-    for name, membership, requested in zip(
+    Society(name, mems, reqs)
+    for name,mems,reqs in zip(
         SOCIETIES,
-        MEMBERSHIP,
-        PREFERRED_PRACTICE_TIME
+        MEMBERSHIPS,
+        REQUESTS
     )
 ]
 
-# ==================
+allocs = []
 
-# ==================
+allocator = AllocateHours(list_of_societies)
+allocator.allocate_all_societies_to_minimum_satisfaction()
+for soc in allocator.societies:
+    allocs.append([soc.allocated_hours])
+    print(soc)
+print(f'\nUnallocated Hours : {allocator.unallocated_hours}\n\n')
+allocator.allocate_remaining_hours()
+for i,soc in enumerate(allocator.societies):
+    print(soc)
+    allocs[i].append(soc.allocated_hours)
 
-def run_algorithms(list_of_societies):
-    '''
-    the big one
-    '''
-    res = {}
-    allocator = AllocateHours(list_of_societies)
-    allocator.generate_random_data()
-
-    res['None'] = (allocator.output_format(algoname='None'))
-
-    allocator.allocate_by_society()
-    res['s1'] = (allocator.output_format('society1'))
-    allocator.get_remainders()
-    res['s2'] = (allocator.output_format('society2'))
-
-    allocator.reset_allocated_times()
-
-    allocator.allocate_by_membership()
-    res['m1'] = (allocator.output_format('membership1'))
-    allocator.get_remainders()
-    res['m2'] = (allocator.output_format('membership2'))
-
-    allocator.reset_allocated_times()
-
-    allocator.allocate_by_requests()
-    res['r1'] = (allocator.output_format('requests1'))
-    allocator.get_remainders()
-    res['r2'] = (allocator.output_format('requests2'))
-
-    allocator.reset_allocated_times()
-
-    return res
-
-# bigres = []
-# for _ in range(10):
-#     bigres.append(run_algorithms(list_of_societies=list_of_societies))
-
-# print('\nthis is about to get mental...\n')
-# for i,res in enumerate(bigres):
-#     print(f'trial {i+1}')
-#     for a,b in res.items():
-#         print(a)
-#         print(b)
-
-
-def run_sim(iters):
-    res = {
-        'society' : [],
-        'membership' : [],
-        'requests' : [],
-        }
-    allocator = AllocateHours(list_of_societies)
-    for _ in range(iters):
-        allocator.generate_random_data()                            # generate random data for trial
-
-        allocator.allocate_by_society()                             # apply allocation algorithm
-        allocator.get_remainders()                                  # allocate remainders
-
-        res['society'].append(allocator.output_format())            # store output data
-
-        allocator.reset_allocated_times()                           # reset allocated times
-
-        allocator.allocate_by_membership()                          # apply allocation algorithm
-        allocator.get_remainders()                                  # allocate remainders
-
-        res['membership'].append(allocator.output_format())         # store output data
-
-        allocator.reset_allocated_times()                           # reset allocated times
-
-        allocator.allocate_by_requests()                            # apply allocation algorithm
-        allocator.get_remainders()                                  # allocate remainders
-
-        res['requests'].append(allocator.output_format())           # store output data
-
-        allocator.reset_allocated_times()                           # reset allocated times
-    return res
-
-res = run_sim(50)
-
-
-
-for algo_name,algo_results in res.items():
-    print(f'\t=-=-=-=-= Algo Applied = {algo_name} =-=-=-=-=\n')
-    for i,trial_results_for_algo in enumerate(algo_results):
-        print(f' Trial {i+1} :')
-        for soc_results in trial_results_for_algo:
-            print(f'\t{soc_results}')
-        print()
-
+for i,a in enumerate(allocs):
+    print(SOCIETIES[i])
+    if a[0] == a[1]:
+        print('\tUNCHANGED!')
+        continue
+    print(f'\tinitial : {a[0]} | final : {a[1]}')
     print()
