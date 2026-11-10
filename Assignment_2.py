@@ -1,5 +1,10 @@
+import csv
+import pandas as pd
 import random as r
+import tkinter as tk
+from tkinter import filedialog
 from math import floor
+from math import ceil
 import matplotlib.pyplot as plt
 
 MEMBERSHIP_MIN = 50
@@ -105,7 +110,7 @@ class Society():
         self.remainder = remainder
 
     def __str__(self):
-        res = f'{self.name}\n\tMembership : {self.membership}\n\tRequested : {self.requested_hours} | Allocated : {self.allocated_hours} | Unallocated : {self.requested_hours_unallocated}\n\tSatisfaction : {self.satisfaction}'
+        res = f'{self.name}\n\tMembership : {self.membership}\n\tRequested : {self.requested_hours} | Allocated : {self.allocated_hours} | Unallocated : {self.requested_hours_unallocated}\n\tSatisfaction : {round(self.satisfaction,4)}'
         return res
 
 
@@ -244,17 +249,24 @@ class SocietyList():
         for soc, hours in zip(self.societies, allocated_times):
             soc.update_allocated_hours(hours)
 
-    def generate_random_data(self):
+    def generate_random_data(
+            self,
+            member_min = MEMBERSHIP_MIN,
+            member_max = MEMBERSHIP_MAX,
+            request_min = REQUESTS_MIN,
+            request_max = REQUESTS_MAX
+            ):
         '''
-        generates random data for each society.
-        50 <= membership <= 200
+        generates random data for each society.\n
+        Default Values: \n
+        50 <= membership <= 200\n
         7 <= preferred_practice_time <= 20
         '''
 
         for soc in self.societies:
             # generate random values
-            rand_membership = r.randint(MEMBERSHIP_MIN,MEMBERSHIP_MAX)    # 50 <= membership <= 200
-            rand_requested_hours = r.randint(REQUESTS_MIN,REQUESTS_MAX)   # 7 <= preferred_practice_time <= 20
+            rand_membership = r.randint(member_min,member_max)
+            rand_requested_hours = r.randint(request_min,request_max)
 
             # update soc with new values
             soc.update_membership(rand_membership)
@@ -445,6 +457,44 @@ class AllocateHours(SocietyList):
             soc.update_remainder_allocation(remainder)
         return self.order_by_remainder()
 
+    @property
+    def satisfaction_data(self):
+        return [soc.satisfaction for soc in self.societies]
+
+
+def compare_allocation_methods_plot(soc_list):
+    plt.figure('MATH2003_Plot')
+    plt.title('Ordered Satisfaction Curves')
+    plt.xlabel('Society rank (lowest to highest satisfaction)')
+    plt.ylabel('Satisfaction')
+    plt.xlim(0.75,len(soc_list) + 0.25)
+
+    xs = [i+1 for i in range(len(soc_list))]
+
+    allocator = AllocateHours(soc_list)
+
+    allocator.reset_allocated_times()
+    allocator.allocate_by_society()
+    ys0 = sorted([soc.satisfaction for soc in allocator.societies])
+    plt.plot(xs,ys0,'o-g')
+
+    allocator.reset_allocated_times()
+    allocator.allocate_by_membership()
+    ys1 = sorted([soc.satisfaction for soc in allocator.societies]).copy()
+    plt.plot(xs,ys1,'o-b')
+
+    allocator.reset_allocated_times()
+    allocator.allocate_remaining_hours()
+    ys2 = sorted([soc.satisfaction for soc in allocator.societies]).copy()
+    plt.plot(xs,ys2,'o-r')
+    for soc in allocator.societies:
+        print(soc)
+    
+    print(allocator.total_requests)
+
+    plt.legend(['Equal', 'Membership', 'Proposed Method'], loc = 'lower right')
+
+    plt.show()
 
 # ==================
 # Create societies objects
@@ -459,23 +509,282 @@ list_of_societies = [
     )
 ]
 
-allocs = []
+def import_soc_info():
+    root = tk.Tk()
+    root.withdraw() # hide empty window
 
-allocator = AllocateHours(list_of_societies)
-allocator.allocate_all_societies_to_minimum_satisfaction()
-for soc in allocator.societies:
-    allocs.append([soc.allocated_hours])
-    print(soc)
-print(f'\nUnallocated Hours : {allocator.unallocated_hours}\n\n')
-allocator.allocate_remaining_hours()
-for i,soc in enumerate(allocator.societies):
-    print(soc)
-    allocs[i].append(soc.allocated_hours)
+    try:
+        filepath = filedialog.askopenfilename(
+            title="Select society data",
+            filetypes=[("CSV files", "*.csv")],
+        )
+    finally:
+        root.destroy()
 
-for i,a in enumerate(allocs):
-    print(SOCIETIES[i])
-    if a[0] == a[1]:
-        print('\tUNCHANGED!')
-        continue
-    print(f'\tinitial : {a[0]} | final : {a[1]}')
-    print()
+    if not filepath: # user cancelled file selection
+        return None
+
+    socinfo = []
+    required_headers = {"SocName", "SocMembers", "SocRequests"}
+
+    try:
+        with open(filepath, newline="", encoding="utf-8-sig") as file:
+            reader = csv.DictReader(file)
+
+            if set(reader.fieldnames or []) != required_headers:
+                raise ValueError(
+                    "CSV headers must be : SocName, SocMembers, SocRequests."
+                )
+
+            for row_number, row in enumerate(reader, start=2):
+                if None in row or any(value is None for value in row.values()):
+                    raise ValueError(
+                        f"Row {row_number}: incorrect number of columns."
+                    )
+
+                name = row["SocName"].strip()
+
+                if not name:
+                    raise ValueError(
+                        f"Row {row_number}: society name cannot be empty."
+                    )
+
+                try:
+                    members = int(row["SocMembers"])
+                    requested = float(row["SocRequests"])
+                    requests = ceil(requested)
+                except (ValueError, OverflowError):
+                    raise ValueError(
+                        f"Row {row_number}: invalid members or requested hours."
+                    ) from None
+
+                if not 50 <= members <= 200:
+                    raise ValueError(
+                        f"Row {row_number}: members must be between 50 and 200."
+                    )
+
+                if requested < 0:
+                    raise ValueError(
+                        f"Row {row_number}: requested hours cannot be negative."
+                    )
+
+                socinfo.append([name, members, requests])
+
+        if not socinfo:
+            raise ValueError("The CSV contains no society data.")
+
+    except (OSError, UnicodeError, csv.Error, ValueError) as error:
+        print(f"Import failed: {error}")
+        return None
+
+    return socinfo
+
+
+def read_number(prompt, convert, is_valid):
+    while True:
+        value = input(prompt).strip()
+
+        if not value:
+            while True:
+                choice = input(
+                    "\t- S : Finish with collected entries\n"
+                    "\t- D : Use default\n"
+                    "\t- X : Cancel\n"
+                    "\t- C : Continue entering data\n\t"
+                ).strip().upper()
+
+                if choice in ['S', 'X', 'D']:
+                    return None, choice
+                if choice == 'C':
+                    break
+            continue
+
+        try:
+            number = convert(value)
+        except (ValueError, OverflowError):
+            print("Rejected: enter a valid number.")
+            continue
+
+        if not is_valid(number):
+            print("Rejected: number outside the allowed range.")
+            continue
+
+        return number, None
+
+def get_soc_info(usr_input_names=False):
+    socinfo = []
+
+    while True:
+        if usr_input_names:
+            socname = input("Name:\n\t").strip()
+            if not socname:
+                print("Please enter a name.")
+                continue
+        else:
+            cycle, index = divmod(len(socinfo), len(SOCIETIES))
+            socname = SOCIETIES[index]
+            if cycle:
+                socname += f" {cycle + 1}"
+
+        socmemb, action = read_number(
+            "Enter number of members (50 – 200):\n\t",
+            int,
+            lambda number: 50 <= number <= 200,
+        )
+
+        if action:
+            return socinfo if action == "S" else None
+
+        socreqs, action = read_number(
+            "Enter requested hours (0 or more, rounded up):\n\t",
+            lambda value: ceil(float(value)),
+            lambda number: number >= 0,
+        )
+
+        if action:
+            return socinfo if action == "S" else None
+
+        socinfo.append([socname, socmemb, socreqs])
+
+
+def run():
+    num_hours_available = ALLOCATABLE_HOURS
+    while True:
+        choice = input(
+            "Choose option:\n"
+            "\t- X: without names\n"
+            "\t- E: with names\n"
+            "\t- I: import from files\n"
+            "\t- R: random (coming soon...)\n\t"
+        ).strip().lower()
+
+        if choice in ['x', 'e','i','r']:
+            break
+        else:
+            print('Please choose X, E, I, or R.')
+
+    if choice == 'i':
+        soclist = import_soc_info()
+    elif choice == 'r':
+        num_iters, action = read_number(
+            prompt = 'How many random societies would you like to generate?\n\t',
+            convert = int,
+            is_valid = lambda number : 0 <= number <= 100_000,
+        )
+        if action:
+            return None
+        num_hours_available, action = read_number(
+            prompt = "Number of hours available for allocation (default : 70)\n\t",
+            convert = int,
+            is_valid = lambda number : 0 <= number <= 1_000,
+        )
+        if action:
+            if action == 'D':
+                print('Using Default : 70')
+                num_hours_available = 70
+            else:
+                return None
+            
+        members_min, action = read_number(
+            prompt = "Minimum number of members (default : 50)\n\t",
+            convert = int,
+            is_valid = lambda number : 0 <= number <= 1_000,
+        )
+        if action:
+            if action == 'D':
+                print('Using Default : 50')
+                members_min = 50
+            else:
+                return None
+        members_max, action = read_number(
+            prompt = "Maximum number of members (default : 200)\n\t",
+            convert = int,
+            is_valid = lambda number : members_min <= number <= 10_000,
+        )
+        if action:
+            if action == 'D':
+                print('Using Default : 200')
+                members_max = 200
+            else:
+                return None
+        requests_min, action = read_number(
+            prompt = "Minimum number of requested hours (default : 7)\n\t",
+            convert = int,
+            is_valid = lambda number : 0 <= number <= 1_000,
+        )
+        if action:
+            if action == 'D':
+                print('Using Default : 7')
+                requests_min = 7
+            else:
+                return None
+        requests_max, action = read_number(
+            prompt = "Maximum number of requested hours (default : 20)\n\t",
+            convert = int,
+            is_valid = lambda number : requests_min <= number <= 10_000,
+        )
+        if action:
+            if action == 'D':
+                print('Using Default : 20')
+                requests_max = 20
+            else:
+                return None
+        
+        soclist = []
+        for _ in range(num_iters):
+            cycle, index = divmod(len(soclist), len(SOCIETIES))
+            socname = SOCIETIES[index]
+            if cycle:
+                socname += f" {cycle + 1}"
+
+            socmembers = r.randint(members_min, members_max)
+            socrequests = r.randint(requests_min, requests_max)
+            soclist.append([socname, socmembers,socrequests])
+    
+    else:
+        soclist = get_soc_info(usr_input_names = (choice == "e"))
+
+    if not soclist:
+        print("No data to allocate.")
+        return
+
+    allocator = AllocateHours(societies = [
+    Society(name, mems, reqs)
+    for name,mems,reqs in soclist
+    ],
+    allocatable_hours= num_hours_available)
+    
+    print("\n--- Data Loaded ---")
+    for society in allocator.societies:
+        print(society)
+
+    algorithms = {
+        "1": allocator.allocate_remaining_hours,
+        "2": allocator.allocate_by_membership,
+        "3": allocator.allocate_by_society,
+    }
+
+    while True:
+        print('Would you like to see a plot comparing the different allocation methods?')
+        if input("Y/N").upper() == 'Y':
+            compare_allocation_methods_plot([Society(name,mems,reqs) for name,mems,reqs in soclist])
+        choice = input(
+            "\nChoose Algorithm:\n"
+            "\t1. Proposed\n"
+            "\t2. Membership\n"
+            "\t3. Equal\n\t"
+        ).strip()
+
+        if choice in algorithms:
+            break
+
+        print("Please choose a number from 1 to 3.")
+
+    allocator.reset_allocated_times()
+    algorithms[choice]()
+
+    for society in allocator.societies:
+        print(society)
+
+if __name__ == "__main__":
+    run()
