@@ -558,11 +558,6 @@ def import_soc_info():
                         f"Row {row_number}: invalid members or requested hours."
                     ) from None
 
-                if not 50 <= members <= 200:
-                    raise ValueError(
-                        f"Row {row_number}: members must be between 50 and 200."
-                    )
-
                 if requested < 0:
                     raise ValueError(
                         f"Row {row_number}: requested hours cannot be negative."
