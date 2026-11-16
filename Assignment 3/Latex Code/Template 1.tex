@@ -1,0 +1,106 @@
+\documentclass[11pt,a4paper]{article}
+% Scaffold based on the module template; replace bracketed prompts.
+% Target 650--800 words including caption and declaration. Compile as you edit.
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{amsmath}
+\usepackage{color}
+% Module formatting: do not change.
+\usepackage[left=2.5cm,right=2cm,top=1.5cm,bottom=2cm]{geometry}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{minted}
+\usepackage{url}
+\begin{document}
+\begin{center}
+{\bf\Large When is a convincing answer enough?}
+
+{\large Benjamin Simpson (SID: 202028988)}\footnote{I used ChatGPT to help interpret the brief, plan the investigation and construct this \LaTeX{} scaffold. [Update this declaration to include any further AI use accurately.]}
+\end{center}
+
+\section*{What would convince us?}
+% INTRODUCTION: approximately 90--110 words.
+[Open with a question about trusting a computed answer. Introduce the
+mini-project: implementing Gaussian elimination for $Ax=b$ and comparing it
+with NumPy's solver. State what you wanted AI to help with and your initial
+expectations. Establish a question about responsible AI use.]
+
+\section*{Putting the answer to the test}
+% INVESTIGATION: approximately 200--240 words, plus the caption.
+[Describe two or three actual AI interactions: what you requested, what it
+provided, and how you checked it. Explain elimination and back substitution
+briefly. Introduce partial pivoting as swapping rows to choose the largest
+available absolute entry in the current pivot column. Compare your method
+with NumPy on the same inputs.]
+
+[Introduce your test family and explain what varies. Choose a reference
+solution $x_*$, form $b=Ax_*$ and denote the computed solution by $\hat{x}$.
+Distinguish the residual $A\hat{x}-b$ from the solution error $\hat{x}-x_*$.
+Mention rounding in forming $b$ if relevant.]
+
+% A short verification snippet; the variables must already be defined.
+\begin{minted}{python}
+residual = np.linalg.norm(A @ x_hat - b) / np.linalg.norm(b)
+error = np.linalg.norm(x_hat - x_star) / np.linalg.norm(x_star)
+\end{minted}
+
+[Explain these relative measures, assuming nonzero $b$ and $x_*$, and connect
+them to a specific claim you accepted or questioned.]
+
+\begin{figure}[H]
+\centering
+\IfFileExists{solver_comparison.pdf}{%
+\includegraphics[width=0.85\linewidth,height=4cm,keepaspectratio]{solver_comparison.pdf}%
+}{%
+\fbox{\parbox[c][3.6cm][c]{0.85\linewidth}{\centering
+Placeholder: insert your own investigation figure.\\
+Suggested: relative solution error against pivot parameter,\\
+comparing basic elimination, pivoted elimination and NumPy.}}%
+}
+\caption{[State the test system, axes, solver labels and measured finding.
+Explain any omitted exact-zero errors on logarithmic axes. This placeholder
+is not experimental evidence.]}
+\label{fig:comparison}
+\end{figure}
+
+% Reserve page 2 for reflection. If page 1 overflows, shorten the prose or
+% simplify the figure; do not shrink the module's formatting.
+\newpage
+\section*{An answer is not an explanation}
+% DISCUSSION: approximately 240--290 words.
+[Interpret the most revealing result in Figure~\ref{fig:comparison}.
+Explain how it changed or qualified your judgement of AI's contribution.
+Separate algorithmic instability from sensitivity inherent in the problem.
+Do not claim that pivoting fixes ill-conditioning or that passing a finite
+set of tests proves correctness.]
+
+[Develop one philosophical angle anchored in this experience. Why trust an
+established numerical library while questioning generated code? Discuss
+assumptions, documentation, testing and accountability. Consider the
+counterargument: responsible use does not require reconstructing every
+detail of a tool's implementation. Where does understanding become necessary?]
+
+[Compare AI as a code generator, tutor and critic using what you actually
+tried. What saved time? What needed extra verification? Could you explain or
+modify the method unaided? Identify limitations: one model, a small test
+family, or your prior Python experience. Avoid generalising to all students.]
+
+\section*{What I would take into a viva}
+% CONCLUSION: approximately 90--120 words, distinct from the discussion.
+[State your personal position. Give three concrete recommendations for a
+final-year student preparing a report, presentation and viva: for example,
+keep an experiment/prompt log, verify important claims independently, and
+practise explaining and modifying the method unaided. State what you would
+delegate to AI in future and which decisions you would retain. Link these
+recommendations to the evidence already discussed.]
+
+% Optional documentation citations as short footnotes near relevant claims:
+% https://numpy.org/doc/stable/reference/generated/numpy.linalg.solve.html
+% https://netlib.org/lapack/explore-html/d8/da6/group__gesv_ga831ce6a40e7fd16295752d18aed2d541.html
+% NumPy calls LAPACK _gesv: LU factorisation with partial pivoting.
+% References and the AI declaration must also fit within two pages.
+% Final checks: four sections, engaging headings, genuine reflection,
+% explained minted snippet, own labelled figure, accurate AI declaration,
+% no placeholders or unsupported results, at most two pages.
+% This scaffold has not been compiled locally; check pagination in Overleaf.
+\end{document}
