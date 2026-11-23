@@ -133,7 +133,7 @@ class Matrix:
         for i in range(self.num_rows):
             get_row_values = []
             for j in range(self.num_cols):
-                get_row_values.append(self.entries[self.get_entry_index(i,j)])
+                get_row_values.append(self.values[self.get_entry_index(i,j)])
             mat.append(get_row_values)
         return mat
 
