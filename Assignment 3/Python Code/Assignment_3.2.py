@@ -248,6 +248,24 @@ class GaussianElimination:
         '''
         return [round(val,show_dp) for val in self.matrix.augmented_values]
 
+    def back_substitution(self):
+        '''
+        DocString
+        '''
+        for i in range(1,self.num_rows):
+            # find the value in the corresponding row of the augmented column
+            known_value = self.matrix.rows[self.num_rows-i].entries[-1].value
+            # loop through all rows above
+            for row in self.matrix.rows[:-i]:
+                # subtract (coefficient * known variable) from row of augmented column
+                row.entries[-1].subtract_multiple_of_entry(
+                    row.entries[-i-1],
+                    known_value
+                )
+                # now the known variable has been eliminated, set the coefficient to zero
+                row.entries[-i-1].value = 0
+
+
 A_VALS = [
     [-1.5,  2.3,  0.3,  0.3,  0.5],
     [-1.4,  1.5,  2.1, -0.2, -1.6],
@@ -262,11 +280,34 @@ B_VALS = [
     -43.5,
     12
 ]
-A = Matrix(A_VALS)
-print(A)
-A.augment_matrix(B_VALS)
-algo = GaussianElimination(A)
-algo.select_pivot_row(0)
-algo.make_REF()
-print(algo)
-print(algo.augmented_values())
+
+def run(
+        matrix : fmat,
+        vector : fvec
+        ) -> fvec:
+    '''
+    Takes 2 inputs:\n
+    - nxn matrix representing system of equations. Each row_i contains a_ij for j = 1,2,...,n :\n\t
+    a_11 * x_1 + a_12 * x_2 + ... + a_1n * x_n\n\t
+    a_21 * x_1 + a_22 * x_2 + ... + a_2n * x_n\n\t
+    ...\n\t
+    a_n1 * x_1 + a_n2 * x_2 + ... + a_nn * x_n\n
+    - 1xn vector representing result of each equation\n
+    Performs 2-step Gaussian elimination:\n
+    1. Get system into REF\n
+    2. Back-substitute to evauluate unknown variables\n
+    Returns the solutions to each variable (x_1,x_2,...,x_n) that satisfy the system of equations.
+    '''
+
+    A = Matrix(rows=matrix)
+    A.augment_matrix(vector=vector)
+    algo = GaussianElimination(A)
+
+    algo.select_pivot_row(0)
+    algo.make_REF()
+    algo.back_substitution()
+
+    print(algo.augmented_values())
+
+if __name__ == '__main__':
+    run(A_VALS,B_VALS)
