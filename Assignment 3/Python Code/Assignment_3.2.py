@@ -1,4 +1,6 @@
 import numpy as np
+from time import perf_counter_ns
+
 flong = np.float64
 fvec = list[flong]
 fmat = list[list[flong]]
@@ -189,6 +191,27 @@ class Matrix:
             row.is_augmented = True
         self.is_augmented = True
 
+    def print_system(self):
+        '''
+        DocString
+        '''
+        st = "\n"
+        num_vars = self.rows[0].length
+        if self.is_augmented:
+            num_vars -= 1
+            aug_vals = self.augmented_values
+
+        for row_ind, row in enumerate(self.rows):
+            strow = ""
+            for i in range(num_vars):
+                strow += f"{row.entries[i].value} x{i+1}"
+                if i != num_vars-1:
+                    strow += " + "
+            if self.is_augmented:
+                strow += f" = {aug_vals[row_ind]}"
+            st += f"{strow}\n"
+        print(st)
+            
 
 class GaussianElimination:
     '''
@@ -301,13 +324,41 @@ def run(
 
     A = Matrix(rows=matrix)
     A.augment_matrix(vector=vector)
+    A.print_system()
     algo = GaussianElimination(A)
 
     algo.select_pivot_row(0)
     algo.make_REF()
     algo.back_substitution()
 
-    print(algo.augmented_values())
+    xs = algo.augmented_values()
+    res = "Solutions to variables: \n"
+    for i,x in enumerate(xs):
+        res += f"x{i+1} = {x}, "
+    print(res,'\n')
+
+def perf():
+    '''
+    returns the average time taken (ns) to solve system of equations using `GaussianElimination` over 10 000 repetitions
+    '''
+    res = []
+
+    for _ in range(10000):
+        A = Matrix(rows=A_VALS)
+        A.augment_matrix(vector=B_VALS)
+        algo = GaussianElimination(A)
+
+        start = perf_counter_ns()
+
+        algo.select_pivot_row(0)
+        algo.make_REF()
+        algo.back_substitution()
+
+        end = perf_counter_ns()
+        res.append(end-start)
+
+    return sum(res)/len(res)
 
 if __name__ == '__main__':
-    run(A_VALS,B_VALS)
+    run(A_VALS, B_VALS)
+    print(f"Average run-time: {perf()} ns\n")
