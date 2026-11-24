@@ -8,14 +8,11 @@ ROUNDING_DP = 3
 
 class Entry:
     '''
-    DocString
+    Representation of an entry in a matrix
     '''
     def __init__(
             self,
             value : flong):
-        '''
-        DocString
-        '''
         self.value = value
 
     def scalar_multiply(self, scalar : flong):
@@ -32,13 +29,13 @@ class Entry:
 
     def __str__(self) -> str:
         '''
-        DocString
+        change global `ROUNDING_DP` to change number of dp
         '''
         return round(self.value, ROUNDING_DP)
 
 class Row:
     '''
-    DocString
+    Represents a row of a matrix. takes a list of floats, stores as a list of Entry objects.
     '''
     def __init__(
             self,
@@ -46,9 +43,6 @@ class Row:
             row_index : int,
             is_augmented : bool = False
             ):
-        '''
-        DocString
-        '''
         self.entries = [Entry(entry) for entry in entries]
         self.is_augmented = is_augmented
         self.row_index = row_index
@@ -56,14 +50,14 @@ class Row:
     @property
     def length(self):
         '''
-        DocString
+        number of entries in row
         '''
         return len(self.entries)
 
     @property
     def first_non_zero_index(self):
         '''
-        DocString
+        returns index of first non-zero entry in row. Returns None if all entries are zero
         '''
         l = self.length
         if self.is_augmented:
@@ -76,7 +70,7 @@ class Row:
     @property
     def first_non_zero_value(self):
         '''
-        DocString
+        returns value of first non-zero entry in row. Returns None if all entries are zero
         '''
         ind = self.first_non_zero_index
         if ind is None:
@@ -85,28 +79,25 @@ class Row:
 
     def scalar_multiply_row(self, scalar : flong):
         '''
-        DocString
+        Multiplies each entry in row by a scalar float
         '''
         for val in self.entries:
             val.scalar_multiply(scalar)
 
     def subtract_multiple_of_row(self, row_to_subtract : Row, scalar : flong):
         '''
-        DocString
+        iterates through each entry in row and subtracts scalar multiple of each entry in `row_to_subtract`
         '''
         for i,entry in enumerate(self.entries):
             entry.subtract_multiple_of_entry(row_to_subtract.entries[i], scalar)
 
     def update_row_index(self, new_index : int):
         '''
-        DocString
+        updates the row index. used for swapping rows
         '''
         self.row_index = new_index
 
     def __str__(self) -> str:
-        '''
-        DocString
-        '''
         s = ""
         for entry in self.entries:
             s += f"{round(entry.value, ROUNDING_DP)}\t"
@@ -115,23 +106,18 @@ class Row:
 
 class Matrix:
     '''
-    DocString
+    Representation of a matrix. takes input as list containing lists of rows of floats.\n
+    Matrix operations to perform for gaussian elimination algorithm
     '''
     def __init__(
             self,
             rows : fmat,
             is_augmented : bool = False
             ):
-        '''
-        DocString
-        '''
         self.rows = [Row(entries,i,is_augmented) for i,entries in enumerate(rows)]
         self.is_augmented = is_augmented
 
     def __str__(self) -> str:
-        '''
-        DocString
-        '''
         s = ""
         for row in self.rows:
             s += f"{str(row)}\n"
@@ -152,7 +138,7 @@ class Matrix:
     @property
     def dimensions(self) -> list[int]:
         '''
-        DocString
+        dim(A)
         '''
         if not self.is_valid:
             return None
@@ -161,14 +147,14 @@ class Matrix:
     @property
     def num_rows(self):
         '''
-        DocString
+        dim(A)[0]
         '''
         return self.dimensions[0]
 
     @property
     def augmented_values(self):
         '''
-        DocString
+        if the matrix is augmented, returns list of values in the augmented column
         '''
         if not self.is_augmented:
             raise LookupError ("Matrix is not augmented")
@@ -193,7 +179,7 @@ class Matrix:
 
     def print_system(self):
         '''
-        DocString
+        prints the system of equations in terminal. if augmented then has = `val`
         '''
         st = "\n"
         num_vars = self.rows[0].length
@@ -215,20 +201,14 @@ class Matrix:
 
 class GaussianElimination:
     '''
-    DocString
+    Algorithm for Gaussian elimination
     '''
     def __init__(self, matrix : Matrix):
-        '''
-        DocString
-        '''
         self.matrix = matrix
         self.num_rows = matrix.num_rows
         self.is_augmented = matrix.is_augmented
 
     def __str__(self):
-        '''
-        DocString
-        '''
         return str(self.matrix)
 
     def select_pivot_row(self, col : int):
@@ -260,20 +240,20 @@ class GaussianElimination:
 
     def make_REF(self):
         '''
-        DocString
+        puts matrix into row-echolon form
         '''
         for col in range(self.num_rows):
             self.make_pivot_column(col)
 
     def augmented_values(self, show_dp : int = 3):
         '''
-        DocString
+        returns list of values in augmented column.
         '''
         return [round(val,show_dp) for val in self.matrix.augmented_values]
 
     def back_substitution(self):
         '''
-        DocString
+        performs back-substitution on a matrix in REF to solve variables.
         '''
         for i in range(1,self.num_rows):
             # find the value in the corresponding row of the augmented column
