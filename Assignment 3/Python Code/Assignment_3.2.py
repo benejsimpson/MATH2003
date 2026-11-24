@@ -197,7 +197,6 @@ class Matrix:
                 strow += f" = {aug_vals[row_ind]}"
             st += f"{strow}\n"
         print(st)
-            
 
 class GaussianElimination:
     '''
@@ -268,7 +267,6 @@ class GaussianElimination:
                 # now the known variable has been eliminated, set the coefficient to zero
                 row.entries[-i-1].value = 0
 
-
 A_VALS = [
     [-1.5,  2.3,  0.3,  0.3,  0.5],
     [-1.4,  1.5,  2.1, -0.2, -1.6],
@@ -307,7 +305,6 @@ def run(
     A.print_system()
     algo = GaussianElimination(A)
 
-    algo.select_pivot_row(0)
     algo.make_REF()
     algo.back_substitution()
 
@@ -316,6 +313,7 @@ def run(
     for i,x in enumerate(xs):
         res += f"x{i+1} = {x}, "
     print(res,'\n')
+    return xs
 
 def perf():
     '''
@@ -339,6 +337,27 @@ def perf():
 
     return sum(res)/len(res)
 
+def np_check(
+        matrix : fmat,
+        vector : fvec
+        ) -> fvec:
+    '''
+    takes matrix A and vector b. checks that my solution matches NumPy's
+    '''
+    A = np.array(matrix, dtype=float)
+    b = np.array(vector, dtype=float).reshape(-1)
+
+    x_numpy = np.linalg.solve(A, b)
+    x_mine = np.asarray(run(matrix, vector)).reshape(-1)
+
+    print("My solution:   ", x_mine)
+    print("NumPy solution:", x_numpy)
+    print("Solutions agree:", np.allclose(x_mine, x_numpy, rtol=1e-8, atol=1e-10))
+    print("Residual A @ x - b:", A @ x_mine - b)
+
 if __name__ == '__main__':
+    # Uncomment lines to run
+
     run(A_VALS, B_VALS)
-    print(f"Average run-time: {perf()} ns\n")
+    # print(f"Average run-time: {perf()} ns\n")
+    # np_check(A_VALS,B_VALS)
